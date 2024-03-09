@@ -10,5 +10,8 @@
   "license": "ISC",
   "devDependencies": {
     "typescript": "^5.4.2"
+  },
+  "dependencies": {
+    "@slack/bolt": "^3.17.1"
   }
 }
