@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "tsc": "tsc",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "start": "npm run watch"
   },
   "author": "",
   "license": "ISC",
