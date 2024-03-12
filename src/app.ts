@@ -7,14 +7,29 @@ const app = new App({"token": process.env.SLACK_BOT_TOKEN || '',
 		     "appToken": process.env.SLACK_APP_TOKEN,
 		     "socketMode": true,
 		     "port": Number(process.env.PORT) || 3000});
-
+const redis = require('redis').createClient({url: process.env.REDIS_URL});
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 const model = genAI.getGenerativeModel({ model: 'gemini-1.0-pro' });
+const dyingMessage = 'Help me. I have died....'
 
 app.event('app_mention', async ({ event, say }) => {
-  const result = await model.generateContent(event.text.substring(15));
-  const response = await result.response;
-  await say(response.text());
+  const thread_ts = event.thread_ts ? event.thread_ts : event.ts;
+  const call = event.text.substring(15)
+  try {
+    await redis.connect()
+  } catch (e: unknown) {
+    if ( e instanceof Error ) {
+      if (e.message !== 'Socket already opened' ) {
+	say(dyingMessage)
+	console.error(e);
+      }
+    }
+  }
+  const result = await model.generateContent(call);
+  const response = (await result.response).text();
+  redis.set(String(thread_ts), JSON.stringify([call, response]), 3600)
+  await say({ text: response, thread_ts: thread_ts });
+  await redis.disconnect()
 });
 
 (async () => {
