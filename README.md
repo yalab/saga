@@ -16,4 +16,5 @@ SLACK_APP_TOKEN: 'Socket Mode'
 - message.groups
 - message.im
 - message.mpim
+- app_mention
 
