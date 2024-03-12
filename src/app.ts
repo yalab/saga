@@ -11,11 +11,9 @@ const app = new App({"token": process.env.SLACK_BOT_TOKEN || '',
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 const model = genAI.getGenerativeModel({ model: 'gemini-1.0-pro' });
 
-app.message('hello', async ({ message, say }) => {
-  const result = await model.generateContent('おはようございます');
+app.event('app_mention', async ({ event, say }) => {
+  const result = await model.generateContent(event.text.substring(15));
   const response = await result.response;
-  console.log();
-
   await say(response.text());
 });
 
