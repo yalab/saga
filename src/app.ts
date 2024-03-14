@@ -12,6 +12,12 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 const model = genAI.getGenerativeModel({ model: 'gemini-1.0-pro' });
 const dyingMessage = 'Help me. I have died....'
 
+const talkToAI = async (messages: Array<string>) => {
+  const result = await model.generateContent(messages[0])
+  const response = await result.response
+  return response.text()
+}
+
 app.event('app_mention', async ({ event, say }) => {
   const thread_ts = event.thread_ts ? event.thread_ts : event.ts;
   const call = event.text.substring(15)
@@ -25,8 +31,7 @@ app.event('app_mention', async ({ event, say }) => {
       }
     }
   }
-  const result = await model.generateContent(call);
-  const response = (await result.response).text();
+  const response = await talkToAI([call])
   redis.set(String(thread_ts), JSON.stringify([call, response]), 3600)
   await say({ text: response, thread_ts: thread_ts });
   await redis.disconnect()
