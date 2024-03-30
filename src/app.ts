@@ -1,4 +1,4 @@
-import { App } from '@slack/bolt';
+import { App, LogLevel } from '@slack/bolt';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import 'dotenv/config'
 
@@ -6,6 +6,7 @@ const app = new App({"token": process.env.SLACK_BOT_TOKEN || '',
 		     "signingSecret": process.env.SLACK_SIGNING_SECRET || '',
 		     "appToken": process.env.SLACK_APP_TOKEN,
 		     "socketMode": true,
+		     "logLevel": process.env.LOG_LEVEL ? process.env.LOG_LEVEL as LogLevel : LogLevel.INFO,
 		     "port": Number(process.env.PORT) || 3000});
 const redis = require('redis').createClient({url: process.env.REDIS_URL});
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -35,6 +36,17 @@ app.event('app_mention', async ({ event, say }) => {
   redis.set(String(thread_ts), JSON.stringify([call, response]), 3600)
   await say({ text: response, thread_ts: thread_ts });
   await redis.disconnect()
+});
+
+app.message(async ({ message, say, logger }) => {
+  if( !('thread_ts' in message) ){
+    return
+  }
+  if (message.text?.substring(0, 1) === '#') {
+    logger.debug('これはコメントやから無視しとこか')
+    return
+  }
+  console.log(message)
 });
 
 (async () => {
