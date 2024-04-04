@@ -10,13 +10,26 @@ const app = new App({"token": process.env.SLACK_BOT_TOKEN || '',
 		     "port": Number(process.env.PORT) || 3000});
 const redis = require('redis').createClient({url: process.env.REDIS_URL});
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const model = genAI.getGenerativeModel({ model: 'gemini-1.0-pro' });
+const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 const dyingMessage = 'Help me. I have died....'
 
 const talkToAI = async (messages: Array<string>) => {
-  const result = await model.generateContent(messages[0])
-  const response = await result.response
-  return response.text()
+  const msg = messages.pop() || ''
+  const history = messages.map((text, i) => {
+    const role = i % 2 === 0 ? 'user' : 'model'
+    return {role: role, parts: [{text: text}]}
+  })
+  const chat = model.startChat({
+    history: history,
+    generationConfig: {
+      maxOutputTokens: 100,
+    },
+  });
+
+  const result = await chat.sendMessage(msg);
+  const response = await result.response;
+  const text = response.text();
+  return text
 }
 
 app.event('app_mention', async ({ event, say }) => {
@@ -46,7 +59,17 @@ app.message(async ({ message, say, logger }) => {
     logger.debug('これはコメントやから無視しとこか')
     return
   }
-  console.log(message)
+  await redis.connect()
+  const str = await redis.get(String(message.thread_ts))
+  if (!str) { return }
+  const messages = JSON.parse(str)
+  messages.push(message.text)
+  console.log(messages)
+  const text = await talkToAI(messages)
+  messages.push(text)
+  await redis.set(String(message.thread_ts), JSON.stringify(messages), 3600)
+  redis.disconnect()
+  await say({text: text, thread_ts: message.thread_ts})
 });
 
 (async () => {
